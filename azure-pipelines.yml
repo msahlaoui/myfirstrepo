@@ -35,4 +35,4 @@ steps:
   displayName: 'publish artifacts'
   inputs:
         pathtoPublish: '$(Build.ArtifactStagingDirectory)' 
-        artifactName: 'firstwebap' 
+        artifactName: 'firstwebap'  
