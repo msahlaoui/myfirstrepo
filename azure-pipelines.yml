@@ -3,94 +3,38 @@
 # Add steps that run tests, create a NuGet package, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
-trigger:
-- master
+pool:
+  name: Hosted Ubuntu 1604
+steps:
+- task: DotNetCoreCLI@2
+  displayName: Restore
+  inputs:
+    command: restore
+    projects: '$(Parameters.RestoreBuildProjects)'
 
-jobs:
-- job: Linux
-  pool:
-    vmImage: 'Ubuntu 16.04'
-  steps:
-  - task: DotNetCoreInstaller@0
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.401'
-  - script: dotnet build ./SimplCommerce.sln
-    displayName: 'dotnet build'
-  - script: ./run-tests.sh
-    displayName: 'run tests'
-  - task: PublishTestResults@2
-    displayName: 'Publish Test Results **/*.trx'
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFormat: VSTest
-      testResultsFiles: '**/*.trx' 
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    projects: '$(Parameters.RestoreBuildProjects)'
+    arguments: '--configuration $(BuildConfiguration)'
 
-- job: macOS
-  pool:
-    vmImage: 'macOS-10.14'
-  steps:
-  - task: DotNetCoreInstaller@0
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.401'
-  - script: dotnet build ./SimplCommerce.sln
-    displayName: 'dotnet build'
-  - script: ./run-tests.sh
-    displayName: 'run tests'
-  - task: PublishTestResults@2
-    displayName: 'Publish Test Results **/*.trx'
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFormat: VSTest
-      testResultsFiles: '**/*.trx' 
+- task: DotNetCoreCLI@2
+  displayName: Test
+  inputs:
+    command: test
+    projects: '$(Parameters.TestProjects)'
+    arguments: '--configuration $(BuildConfiguration)'
 
-- job: Windows
-  pool:
-    vmImage: 'windows-2019'
-  steps:
-  - task: DotNetCoreInstaller@0
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.401'
-  - script: dotnet build ./SimplCommerce.sln
-    displayName: 'dotnet build'
-  - task: PowerShell@2
-    inputs:
-      filePath: .\run-tests.ps1
-    displayName: 'run tests'
-  - task: PublishTestResults@2
-    displayName: 'Publish Test Results **/*.trx'
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFormat: VSTest
-      testResultsFiles: '**/*.trx' 
+- task: DotNetCoreCLI@2
+  displayName: Publish
+  inputs:
+    command: publish
+    publishWebProjects: True
+    arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+    zipAfterPublish: True
 
-- job: LinuxRelease
-  pool:
-    vmImage: 'Ubuntu 16.04'
-  variables:
-    buildConfiguration: 'Release'
-  steps:
-  - task: DotNetCoreInstaller@0
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.401'
-  - script: dotnet build --configuration $(buildConfiguration)
-    displayName: 'dotnet build $(buildConfiguration)'
-  - script: ./run-tests.sh
-    displayName: 'run tests'    
-  - task: PublishTestResults@2
-    displayName: 'Publish Test Results **/*.trx'
-    condition: succeededOrFailed()
-    inputs:
-      testResultsFormat: VSTest
-      testResultsFiles: '**/*.trx' 
-  - task: CopyFiles@2
-    inputs:
-      targetFolder: '$(Build.ArtifactStagingDirectory)'    
-
-  - task: PublishBuildArtifacts@1    
-    displayName: 'Publish Artifact: drop'
-    inputs:
-      PathtoPublish: '$(build.artifactstagingdirectory)'
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+  condition: succeededOrFailed()
